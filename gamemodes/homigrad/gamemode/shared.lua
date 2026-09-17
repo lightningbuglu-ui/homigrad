@@ -1,7 +1,7 @@
 DeriveGamemode("sandbox")
 
 GM.Name = "Homigrad"
-GM.Author = "loh / Harrison"
+GM.Author = "Homigrad community"
 GM.Email = "N/A"
 GM.Website = "N/A"
 GM.TeamBased = true
@@ -9,18 +9,18 @@ GM.TeamBased = true
 include("loader.lua")
 
 local start = SysTime()
-print("	start homigrad gamemode.")
+print("\tstart homigrad gamemode.")
 
 GM.includeDir("homigrad/gamemode/game/")
 
 hg.LoadModes()
 
-print("	end homigrad gamemode for " .. math.Round(SysTime() - start,4) .. "s")
+print("\tend homigrad gamemode for " .. math.Round(SysTime() - start,4) .. "s")
 
 function GM:CreateTeams()
 	team.SetUp(1,"Join Game",Color(255,0,0))
-	team.SetUp(2,"#######",Color(0,0,255))
-	team.SetUp(3,"######",Color(0,255,0))
+	team.SetUp(2,"Team Two",Color(0,0,255))
+	team.SetUp(3,"Team Three",Color(0,255,0))
 
 	team.MaxTeams = 3
 end

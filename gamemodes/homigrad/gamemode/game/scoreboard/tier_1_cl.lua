@@ -62,7 +62,7 @@ end)
 
 local function ToggleScoreboard(toggle)
 	if toggle then
-        if IsValid(HomigradScoreboard) then return end--shut the fuck up
+        if IsValid(HomigradScoreboard) then return end
 
 		showRoundInfo = CurTime() + 2.5
 
@@ -145,14 +145,8 @@ local function ToggleScoreboard(toggle)
 			draw.SimpleText("Status","HomigradFont",100,15,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			draw.SimpleText("Name","HomigradFont",w / 2,15,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 
-			draw.SimpleText("Harrison's Homigrad","HomigradFontLarge",w / 2,h / 2,Color(155,155,165,50),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
-			--draw.SimpleText("HOMIGRADED","HomigradFontLarge",w / 2,h / 2,Color(155,155,165,5),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
-			
+			draw.SimpleText("Homigrad","HomigradFontLarge",w / 2,h / 2,Color(155,155,165,50),TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			draw.SimpleText("Role","HomigradFont",w - 300,15,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
-			--draw.SimpleText("Дни Часы Минуты","HomigradFont",w - 300,20,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
-			--draw.SimpleText("M","HomigradFont",w - 300 + 15,15,white,TEXT_ALIGN_LEFT,TEXT_ALIGN_CENTER)
-			
-
 			draw.SimpleText("Ping","HomigradFont",w - 200,15,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			draw.SimpleText("Team","HomigradFont",w - 100,15,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 			draw.SimpleText("Players: " .. table.Count(player.GetAll()),"HomigradFont",15,h - 25,green,TEXT_ALIGN_LEFT,TEXT_ALIGN_CENTER)
@@ -309,7 +303,6 @@ local function ToggleScoreboard(toggle)
 				draw.SimpleText(alive,"HomigradFont",100,h / 2,alivecol,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 				draw.SimpleText(name1,"HomigradFont",w / 2,h / 2,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 				
-				--Table for usergroup names and corresponding display names and colors
 				local userGroupDisplay = {
 					owner = {name = "Owner", color = Color(0,242,255)},
 					servermanager = {name = "Server Manager", color = Color(255, 25, 25)}, 
@@ -324,31 +317,16 @@ local function ToggleScoreboard(toggle)
 					user = {name = "User", color = Color(125, 125, 125)}
 				}
 
-				-- Function to get the display name and color for a user group
 				local function GetDisplayNameAndColor(usergroup)
 					return userGroupDisplay[usergroup] and userGroupDisplay[usergroup].name or usergroup,
 						userGroupDisplay[usergroup] and userGroupDisplay[usergroup].color or color_white
 				end
 
-				-- Example of how to draw the text with the display name and color
 				local displayName, displayColor = GetDisplayNameAndColor(ply:GetUserGroup())
-				
 				draw.SimpleText(displayName, "HomigradFont", w - 300, h / 2, displayColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-
-				-- else
-				-- 	local time = math.floor(CurTime() - ply.TimeStart + (ply.Time or 0))
-				-- 	local dTime,hTime,mTime = math.floor(time / 60 / 60 / 24),tostring(math.floor(time / 60 / 60) % 24),tostring(math.floor(time / 60) % 60)
-
-				-- 	draw.SimpleText(dTime,"HomigradFont",w - 300 - 15,h / 2,white,TEXT_ALIGN_RIGHT,TEXT_ALIGN_CENTER)
-				-- 	draw.SimpleText(hTime,"HomigradFont",w - 300,h / 2,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
-				-- 	draw.SimpleText(mTime,"HomigradFont",w - 300 + 15,h / 2,white,TEXT_ALIGN_LEFT,TEXT_ALIGN_CENTER)
-				-- end
-				
 				draw.SimpleText(ply:Ping(),"HomigradFont",w - 200,h / 2,white,TEXT_ALIGN_CENTER,TEXT_ALIGN_CENTER)
 
 				local name,color = ply:PlayerClassEvent("TeamName")
-				--print()
-
 				if not name then
 					name,color = TableRound().GetTeamName(ply)
 					name = name or "Spectator"
@@ -447,7 +425,6 @@ net.Receive("close_tab",function(len)
 	ToggleScoreboard(false)
 end)
 
--- Probably not the best place to put it, but who give's a fuck. - Harrison
 hook.Add("HUDDrawScoreBoard","spectatorwarning",function()  
     if LocalPlayer():Team() == 1002 then
         draw.DrawText("You are currently in Spectator Mode.", "HomigradFontSmall", ScrW() / 2, ScrH() /1.2 ,
@@ -456,6 +433,5 @@ hook.Add("HUDDrawScoreBoard","spectatorwarning",function()
             Color(255, 255, 255,255), TEXT_ALIGN_CENTER)
     end
 end)
-
 
 ToggleScoreboard(false)

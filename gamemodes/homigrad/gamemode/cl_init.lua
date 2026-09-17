@@ -33,6 +33,7 @@ surface.CreateFont("HomigradFontBigger",{
 
 surface.CreateFont("HomigradRoundFont",{
 	font = "Roboto",
+	font = "Roboto",
 	size = ScreenScale(18),
 	weight = 1100,
 	outline = false
@@ -52,25 +53,8 @@ surface.CreateFont("HomigradFontSmall",{
 	outline = false
 })
 
--- Harrisons puts ConVar in worst script, asked to leave
 CreateClientConVar("hg_scopespeed","0.5",true,false,"Changes the speed of the sniper scope when zoomed in.",0,5)
 CreateClientConVar("hg_usecustommodel","false",true,true,"Allows usage of custom models.")
-
-
--- For player models!!
-local validUserGroup = {
-	servermanager = true,
-	owner = true,
-	superadmin = true,
-	admin = true,
-	operator = true,
-	tmod = true,
-	sponsor = true,
-	supporterplus = false,
-	supporter = false,
-	regular = false,
-	user = false,
-}
 
 net.Receive("round_active",function(len)
 	roundActive = net.ReadBool()
@@ -135,8 +119,6 @@ hook.Add("HUDPaint","spectate",function()
 	local result = lply:PlayerClassEvent("CanUseSpectateHUD")
 	if result == false then return end
 
-
-
 	if
 		(((not lply:Alive() or lply:Team() == 1002 or spec and lply:GetObserverMode() != OBS_MODE_NONE) or lply:GetMoveType() == MOVETYPE_NOCLIP)
 		and not lply:InVehicle()) or result or hook.Run("CanUseSpectateHUD")
@@ -157,8 +139,6 @@ hook.Add("HUDPaint","spectate",function()
 		local key = lply:KeyDown(IN_WALK)
 		if keyOld ~= key and key then
 			SpectateHideNick = not SpectateHideNick
-
-			--chat.AddText("Ники игроков: " .. tostring(not SpectateHideNick))
 		end
 		keyOld = key
 
@@ -195,7 +175,7 @@ hook.Add("HUDPaint","spectate",function()
 			local func = TableRound().HUDPaint_ESP
 			if func then func() end
 
-			for _, v in ipairs(player.GetAll()) do --ESP
+			for _, v in ipairs(player.GetAll()) do
 				if !v:Alive() or v == ent then continue end
 
 				local ent = IsValid(v:GetNWEntity("Ragdoll")) and v:GetNWEntity("Ragdoll") or v
@@ -239,7 +219,6 @@ local laserweps = {
 	["weapon_hk_usp"] = true,
 	["weapon_hk416"] = true,
 	["weapon_p99"] = true,
-	--["weapon_hk_usps"] = true,
 	["weapon_m4a1"] = true,
 	["weapon_ar15"] = true,
 	["weapon_m3super"] = true,
@@ -249,7 +228,6 @@ local laserweps = {
 	["weapon_mateba"] = true,
 	["weapon_beanbag"] = true,
 	["weapon_glock"] = true,
---	["weapon_hg_crossbow"] = true
 }
 laserplayers = laserplayers or {}
 local mat = Material("sprites/bluelaser1")
@@ -268,9 +246,7 @@ hook.Add("PostDrawOpaqueRenderables", "laser", function()
 			local t = {}
 
 			t.start = pos + ang:Right() * 0 + ang:Forward() * -5 + ang:Up() * -0.5
-			
 			t.endpos = t.start + ang:Forward() * 9000
-			
 			t.filter = {ply,wep,LocalPlayer(),ply:GetNWEntity("Ragdoll"),ply:GetNWEntity("ragdollWeapon")}
 			t.mask = MASK_SOLID
 			local tr = util.TraceLine(t)
@@ -294,7 +270,6 @@ hook.Add("PostDrawOpaqueRenderables", "laser", function()
 			if not tra.Hit then
 				render.DrawSprite(tr.HitPos, Size, Size,Color(255,0,0))
 			end
-			--render.DrawQuadEasy(tr.HitPos, (tr.StartPos - tr.HitPos):GetNormal(), Size, Size, Color(255,0,0), 0)
 
 			cam.End3D()
 		end
@@ -374,31 +349,17 @@ local function ToggleMenu(toggle)
 		ammoMenu:SetIcon("icon16/box.png")
 
 		local plyModelMenu = plyMenu:AddOption("Player Model",function()
-			if validUserGroup[LocalPlayer():GetUserGroup()] then
-				RunConsoleCommand("playermodel_selector")
-				surface.PlaySound("UI/buttonclickrelease.wav")
-				RunConsoleCommand("hg_usecustommodel", "true")
-			else
-				LocalPlayer():ChatPrint("<clr:red>Failed!<clr:white> Only <rainbow>:gem: Server Sponsor's<clr:white> can access this menu.\nBecome a <rainbow>:gem: Server Sponsor<clr:white> at <link:https://harrisonshomigrad.tip4serv.com/>")
-				surface.PlaySound("Friends/friend_join.wav")
-			end
-
+			RunConsoleCommand("playermodel_selector")
+			surface.PlaySound("UI/buttonclickrelease.wav")
+			RunConsoleCommand("hg_usecustommodel", "true")
 		end)
 		plyModelMenu:SetIcon("icon16/user_suit.png")
 
-		if validUserGroup[LocalPlayer():GetUserGroup()] and LocalPlayer():GetInfo("hg_usecustommodel") == "true" then
+		if LocalPlayer():GetInfo("hg_usecustommodel") == "true" then
 			local plyModelMenu = plyMenu:AddOption("Remove Custom Model",function()
-				if validUserGroup[LocalPlayer():GetUserGroup()] then
-					--print( )
-					LocalPlayer():ChatPrint("<clr:green>Success!<clr:white> Your player model has been reverted to a regular citizen model, and will be applied next round.")
-					--RunConsoleCommand("cl_playermodel", "none")
-					RunConsoleCommand("hg_usecustommodel", "false")
-					surface.PlaySound("UI/buttonclickrelease.wav")
-				else
-					LocalPlayer():ChatPrint("<clr:red>Failed!<clr:white> You do not have a model assigned.")
-					surface.PlaySound("Friends/friend_join.wav")
-				end
-
+				LocalPlayer():ChatPrint("<clr:green>Success!<clr:white> Your player model has been reverted to a regular citizen model, and will be applied next round.")
+				RunConsoleCommand("hg_usecustommodel", "false")
+				surface.PlaySound("UI/buttonclickrelease.wav")
 			end)
 			plyModelMenu:SetIcon("icon16/cancel.png")
 		end
@@ -486,39 +447,6 @@ local clipcolorempty = Color(247, 40, 40, 255)
 local colorgray = Color(200, 200, 200)
 local shadow = color_black
 
---[[hook.Add("HUDPaint","homigrad-fancyammo",function()
-	--[[local ply = LocalPlayer()
-	local clip, maxclip, ammo = GetClipForCurrentWeapon(ply)
-	local clipstring = tostring(clip)
-	local sw, sh = ScrW(), ScrH()
-	if clip != -1 and maxclip > 0 then
-		if oldclip != clip then
-			randomx = math.random(0, 10)
-			randomy = math.random(0, 10)
-			timer.Simple(0.15, function()
-				oldclip = clip
-			end)
-		else
-			randomx = 0
-			randomy = 0
-		end
-
-		if clip == 0 then
-			clipcolor = clipcolorempty
-		elseif maxclip / clip >= 6 or clip == 1 and maxclip != 1 then
-			clipcolor = clipcolorlow
-		else
-			clipcolor = color_white
-		end
-
-		draw.SimpleText("/ " .. ammo, "HomigradFontSmall", sw * 0.9 + 2 + #clipstring * sw * 0.02, sh * 0.97 + 2, shadow)
-		draw.SimpleText("/ " .. ammo, "HomigradFontSmall", sw * 0.9 + #clipstring * sw * 0.02, sh * 0.97, colorgray)
-
-		draw.SimpleText(clip, "HomigradFontLarge", sw * 0.89 + 5 + randomx, sh * 0.92 + 5 + randomy, shadow)
-		draw.SimpleText(clip, "HomigradFontLarge", sw * 0.89 + randomx, sh * 0.92 + randomy, clipcolor)
-	end
-end)
-]]
 net.Receive("remove_jmod_effects",function(len)
 	LocalPlayer().EZvisionBlur = 0
 	LocalPlayer().EZflashbanged = 0
@@ -538,14 +466,6 @@ end)
 
 gameevent.Listen("player_spawn")
 hook.Add("player_spawn","gg",function(data)
-	--[[local ply = Player(data.userid)
-
-	if ply.SetHull then
-		ply:SetHull(ply:GetNWVector("HullMin"),ply:GetNWVector("Hull"))
-		ply:SetHullDuck(ply:GetNWVector("HullMin"),ply:GetNWVector("HullDuck"))
-	end
-
-	hook.Run("Player Spawn",ply)--]]
 end)
 
 hook.Add("DrawDeathNotice","no",function() return false end)
