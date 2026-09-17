@@ -2,6 +2,8 @@ local npcs = {
     "npc_combine_s",
 }
 
+local NPC_MODEL = "models/combine_soldier.mdl"
+
 function basedefence.SpawnGred()
     for i,point in pairs(ReadDataMap("basedefencegred")) do
         local ent = ents.Create("gred_emp_dshk")
@@ -40,10 +42,6 @@ function basedefence.StartRoundSV()
     local players = PlayersInGame()
     for i,ply in pairs(players) do ply:SetTeam(1) end
 
-    --local data = {}
-    --nextbot.twoteams = false
-    --data.twoteams = false
-
     local spawnsT,spawnsCT = tdm.SpawnsTwoCommand()
     local botsspawns = ReadDataMap("basedefencebots")
     table.Merge(botsspawns,ReadDataMap("blue"))
@@ -63,47 +61,72 @@ function basedefence.StartRoundSV()
 
     timer.Create("BD_npcwave", 60, 0, function()
         local plys = team.GetPlayers(1)
+        if #plys == 0 or #botsspawns == 0 then return end
 
         for i = 1,#botsspawns - count do
-            local bot = table.Random(npcs)
-            bot = ents.Create(bot)
-            local wep = ents.Create("weapon_sar2")
-            wep:Spawn()
+            local bot = ents.Create(table.Random(npcs))
+            if not IsValid(bot) then continue end
+
+            -- npc_combine_s does not always receive its model when spawned by
+            -- custom gamemode code. Set it before and after Spawn so the
+            -- networked model is available to clients immediately.
+            bot:SetModel(NPC_MODEL)
 
             local point = ReadPoint(botsspawns[math.random(#botsspawns)])
+            if not point then
+                bot:Remove()
+                continue
+            end
+
             bot:SetPos(point[1])
             bot:Spawn()
+            bot:Activate()
+            bot:SetModel(NPC_MODEL)
+
+            local wep = ents.Create("weapon_sar2")
+            if IsValid(wep) then
+                wep:Spawn()
+                bot:PickupWeapon(wep)
+            end
 
             count = count + 1
+            bot:UpdateEnemyMemory(plys[math.random(#plys)],bot:GetPos())
 
-            bot:PickupWeapon(wep)
-            local ply = plys[math.random(#plys)]
-            bot:UpdateEnemyMemory(ply,ply:GetPos())
+            local botIndex = bot:EntIndex()
+            timer.Create("botsupdatemem" .. botIndex,20,0,function()
+                if not IsValid(bot) then
+                    timer.Remove("botsupdatemem" .. botIndex)
+                    return
+                end
 
-            timer.Create("botsupdatemem"..bot:EntIndex(),20,0,function()
-                local ply = plys[math.random(#plys)]
-                bot:UpdateEnemyMemory(ply,ply:GetPos())
+                local currentPlayers = team.GetPlayers(1)
+                if #currentPlayers > 0 then
+                    local ply = currentPlayers[math.random(#currentPlayers)]
+                    if IsValid(ply) then bot:UpdateEnemyMemory(ply,ply:GetPos()) end
+                end
             end)
 
             bot:CallOnRemove("botdead",function()
-                count = count - 1
-
-                if timer.Exists("botsupdatemem"..bot:EntIndex()) then
-                    timer.Remove("botsupdatemem"..bot:EntIndex())
-                end
+                count = math.max(count - 1, 0)
+                timer.Remove("botsupdatemem" .. botIndex)
             end)
         end
 
         for i = 1, #boxspawn - countBox do
-            box = ents.Create("prop_physics")
+            local box = ents.Create("prop_physics")
             box:SetModel("models/props_junk/wood_crate001a.mdl")
 
             local point = ReadPoint(boxspawn[math.random(#boxspawn)])
+            if not point then
+                box:Remove()
+                continue
+            end
+
             box:SetPos(point[1] + Vector(0,0,50))
             box:Spawn()
 
             countBox = countBox + 1
-            box:CallOnRemove("boxdead",function() countBox = countBox - 1 end)
+            box:CallOnRemove("boxdead",function() countBox = math.max(countBox - 1, 0) end)
         end
     end)
 
