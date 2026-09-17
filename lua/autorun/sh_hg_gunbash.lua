@@ -1,5 +1,5 @@
 -- Gun bash for Homigrad/JMod guns.
--- Hold USE and press ATTACK to strike with the weapon instead of firing it.
+-- Hold USE (E) and press ATTACK (LMB) to strike with the weapon instead of firing it.
 
 local GUN_BASH_ANIMATION = "Melee_gunhit"
 local GUN_BASH_RANGE = 58
@@ -12,8 +12,6 @@ local function isGunBashWeapon(wep)
     if wep.CanBash == false then return false end
     if wep:GetClass() == "weapon_hands" then return false end
 
-    -- Support the JMod/ArcCW gun bases used by this repository, while also
-    -- allowing weapon classes to opt in by setting GunBash = true.
     return wep.GunBash == true
         or wep.ArcCW == true
         or wep.ishgweapon == true
@@ -31,8 +29,6 @@ local function playGunBashAnimation(ply, wep)
                 vm:SendViewModelMatchingSequence(sequence)
                 vm:SetPlaybackRate(1)
             else
-                -- Not every weapon model contains the HL2 animation. Keep the
-                -- bash usable and fall back to the weapon's primary animation.
                 wep:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
             end
         end
@@ -50,10 +46,9 @@ local function applyGunBashDamage(wep, ply)
     ply:LagCompensation(true)
 
     local start = ply:GetShootPos()
-    local finish = start + ply:GetAimVector() * GUN_BASH_RANGE
     local trace = util.TraceHull({
         start = start,
-        endpos = finish,
+        endpos = start + ply:GetAimVector() * GUN_BASH_RANGE,
         filter = ply,
         mins = Vector(-8, -8, -8),
         maxs = Vector(8, 8, 8),
@@ -103,22 +98,27 @@ hook.Add("StartCommand", "HG_GunBash", function(ply, cmd)
     if not IsValid(ply) or not ply:Alive() then return end
 
     local wep = ply:GetActiveWeapon()
-    if not isGunBashWeapon(wep) then return end
-
     local buttons = cmd:GetButtons()
-    local wantsBash = bit.band(buttons, IN_ATTACK) ~= 0
-        and bit.band(buttons, IN_USE) ~= 0
-    if not wantsBash then return end
+    local useDown = bit.band(buttons, IN_USE) ~= 0
+    local attackDown = bit.band(buttons, IN_ATTACK) ~= 0
+    local attackPressed = attackDown and not ply.HG_GunBashAttackDown
+
+    -- Store the LMB state so holding E and holding LMB does not repeatedly
+    -- bash. LMB must transition from up to down while E is already held.
+    ply.HG_GunBashAttackDown = attackDown
+
+    if not isGunBashWeapon(wep) or not useDown or not attackPressed then return end
 
     local commandNumber = cmd:CommandNumber()
     if ply.HG_GunBashCommand == commandNumber then return end
     ply.HG_GunBashCommand = commandNumber
 
-    -- Prevent the same input from also firing a bullet.
+    -- Prevent this LMB press from also firing a bullet.
     cmd:SetButtons(bit.band(buttons, bit.bnot(IN_ATTACK)))
     startGunBash(ply, wep)
 end)
 
 hook.Add("PlayerDeath", "HG_GunBashCleanup", function(ply)
     ply.HG_GunBashCommand = nil
+    ply.HG_GunBashAttackDown = nil
 end)
