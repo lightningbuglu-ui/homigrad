@@ -241,7 +241,7 @@ function SWEP:TryBustDoor(ent, dmginfo)
 
 		-- Double doors are usually linked to the same areaportal. We must destroy the second half of the double door no matter what
 		for _, otherDoor in pairs(ents.FindInSphere(ent:GetPos(), 64)) do
-			if ent ~= otherDoor and otherDoor:GetClass() == ent:GetClass() and not otherDoor:GetNoDraw() then
+			if ent ~= otherDoor and ent:GetClass() == otherDoor:GetClass() and not otherDoor:GetNoDraw() then
 				JMod.BlastThatDoor(otherDoor, (ent:LocalToWorld(ent:OBBCenter()) - self:GetPos()):GetNormalized() * 100)
 				otherDoor.ArcCW_BustDamage = nil
 				break
@@ -327,9 +327,8 @@ function SWEP:TranslateFOV(fov)
     self.ApproachFOV = self.ApproachFOV or fov
     self.CurrentFOV = self.CurrentFOV or fov
 
-    -- Only update every tick (this function is called multiple times per tick)
+    -- Only update every tick (this function is called every tick)
     if self.LastTranslateFOV == UnPredictedCurTime() then return self.CurrentFOV end
-    local timed = UnPredictedCurTime() - self.LastTranslateFOV
     self.LastTranslateFOV = UnPredictedCurTime()
 
     local app_vm = self.ViewModelFOV + self:GetOwner():GetInfoNum("arccw_vm_fov", 0)
@@ -404,6 +403,118 @@ end
 -- customization
 function SWEP:ToggleCustomizeHUD(ic)
 end
+
+local HG_GUN_BASH_ANIM = "Melee_gunhit"
+local HG_GUN_BASH_RANGE = 58
+local HG_GUN_BASH_DAMAGE = 25
+local HG_GUN_BASH_COOLDOWN = 0.75
+local HG_GUN_BASH_HIT_DELAY = 0.22
+
+local function HG_IsGunBashWeapon(wep)
+	if not IsValid(wep) then return false end
+	if wep.CanBash == false then return false end
+	if wep.ArcCW then return true end
+	if wep.ishgweapon then return true end
+	if wep.Base == "wep_jack_gmod_gunbase" then return true end
+	return false
+end
+
+local function HG_PlayGunBashAnim(ply, wep)
+	if not IsValid(ply) or not IsValid(wep) then return end
+	local vm = ply:GetViewModel()
+	if IsValid(vm) then
+		local seq = vm:LookupSequence(HG_GUN_BASH_ANIM)
+		if seq and seq >= 0 then
+			vm:SendViewModelMatchingSequence(seq)
+			vm:SetPlaybackRate(1)
+		else
+			wep:SendWeaponAnim(ACT_VM_PRIMARYATTACK)
+		end
+	end
+
+	ply:DoAnimationEvent(ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE2)
+end
+
+local function HG_ApplyGunBashDamage(wep, ply)
+	if not IsValid(wep) or not IsValid(ply) or not ply:Alive() then return end
+	if not HG_IsGunBashWeapon(wep) then return end
+
+	local start = ply:GetShootPos()
+	local dir = ply:GetAimVector()
+	local trace = util.TraceHull({
+		start = start,
+		endpos = start + dir * HG_GUN_BASH_RANGE,
+		mins = Vector(-10, -10, -8),
+		maxs = Vector(10, 10, 8),
+		filter = ply,
+		mask = MASK_SHOT_HULL
+	})
+
+	if not trace.Hit or not IsValid(trace.Entity) then return end
+
+	local target = trace.Entity
+	local canDamage = target:IsPlayer() or target:IsNPC() or target:IsNextBot() or target:GetMoveType() == MOVETYPE_VPHYSICS
+	if not canDamage then return end
+
+	local dmg = DamageInfo()
+	dmg:SetAttacker(ply)
+	dmg:SetInflictor(wep)
+	dmg:SetDamage(HG_GUN_BASH_DAMAGE)
+	dmg:SetDamageType(DMG_CLUB)
+	dmg:SetDamagePosition(trace.HitPos)
+	dmg:SetDamageForce(dir * 5000)
+	target:TakeDamageInfo(dmg)
+
+	local phys = target:GetPhysicsObject()
+	if IsValid(phys) then
+		phys:ApplyForceOffset(dir * 3500, trace.HitPos)
+	end
+
+	if target:IsPlayer() or target:IsNPC() then
+		target:EmitSound("physics/body/body_medium_impact_hard" .. tostring(math.random(1, 3)) .. ".wav", 75, 100)
+	else
+		target:EmitSound("physics/metal/metal_solid_impact_bullet2.wav", 65, 100)
+	end
+end
+
+local function HG_StartGunBash(wep, ply)
+	if not IsValid(wep) or not IsValid(ply) or not ply:Alive() then return end
+	if not HG_IsGunBashWeapon(wep) then return end
+	if wep.HG_GunBashNext and wep.HG_GunBashNext > CurTime() then return end
+
+	wep.HG_GunBashNext = CurTime() + HG_GUN_BASH_COOLDOWN
+	wep:SetNextPrimaryFire(wep.HG_GunBashNext)
+	wep:SetNextSecondaryFire(wep.HG_GunBashNext)
+
+	HG_PlayGunBashAnim(ply, wep)
+	wep:EmitSound("weapons/iceaxe/iceaxe_swing1.wav", 65, 100)
+
+	timer.Simple(HG_GUN_BASH_HIT_DELAY, function()
+		if not IsValid(wep) or not IsValid(ply) then return end
+		if SERVER then HG_ApplyGunBashDamage(wep, ply) end
+	end)
+end
+
+hook.Add("StartCommand", "JMod_GunBash", function(ply, cmd)
+	if not IsValid(ply) or not ply:Alive() then return end
+	local wep = ply:GetActiveWeapon()
+	if not HG_IsGunBashWeapon(wep) then return end
+
+	local buttons = cmd:GetButtons()
+	local wantsBash = bit.band(buttons, IN_ATTACK) ~= 0 and bit.band(buttons, IN_USE) ~= 0
+	if not wantsBash then return end
+
+	local last = ply.HG_GunBashCommand or 0
+	if last ~= cmd:CommandNumber() then
+		ply.HG_GunBashCommand = cmd:CommandNumber()
+		cmd:SetButtons(bit.band(buttons, bit.bnot(IN_ATTACK)))
+		HG_StartGunBash(wep, ply)
+	end
+end)
+
+hook.Add("PlayerDeath", "JMod_GunBashCleanup", function(ply)
+	ply.HG_GunBashCommand = nil
+end)
 
 -- jmod will have its own customization system
 -- arctic's bash code is REALLY bad tbh
@@ -537,7 +648,7 @@ function SWEP:MeleeAttack(melee2)
             mask=MASK_SHOT_HULL
         })
     end
-	
+ 	
 	if(self.MeleeHitBullet)then
 		self:FireBullets({
 			Src=self:GetOwner():GetShootPos(),
